@@ -102,5 +102,86 @@
         }
       }
     }
+  },
+  {
+    "id": "",
+    "invoiceTypeJson": {
+      "invoice": {
+        "invoiceNum": "",
+        "storage": [],
+        "pairData": {
+          "IC": "",
+          "DIC": ""
+        },
+        "accountingData": {
+          "supplierAccountNumber": "",
+          "currency": "",
+          "iban": "",
+          "swift": "",
+          "totalAmount": 0,
+          "totalAmountInPayingCurrency": 0,
+          "dphPercent": 0,
+          "dphPayingCurrency": 0,
+          "dphCzk": 0,
+          "dphBaseCzk": 0,
+          "paymentCircumstances": null,
+          "paymentInstructions": null,
+          "dueDate": "",
+          "duzpDate": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "6194702410317915",
+    "invoiceTypeJson": {
+      "invoice": {
+        "invoiceNum": "10317915",
+        "storage": [
+          {
+            "name": "Válečkový řetěz bezúdržbový IWIS MEGAlife I - G 67 ML 76,6 m",
+            "amount": 27.25,
+            "unitPrice": 2.08735,
+            "totalPrice": 2.08735,
+            "orderNumber": "OPTC-4998/2025",
+            "intrastatData": {
+              "tariffCode": "06 B-1 (3/8\"x7/32\")",
+              "countryOfOrigin": ""
+            }
+          },
+          {
+            "name": "Dělení řetězů 06 B-1 / 35-1",
+            "amount": 40,
+            "unitPrice": 0.428,
+            "totalPrice": 17.12,
+            "orderNumber": "DL-16343/2025",
+            "intrastatData": {
+              "tariffCode": "06 B-1 (3/8\"x7/32\")",
+              "countryOfOrigin": ""
+            }
+          }
+        ],
+        "pairData": {
+          "IC": "61947024",
+          "DIC": "CZ61947024"
+        },
+        "accountingData": {
+          "supplierAccountNumber": "",
+          "currency": "EUR",
+          "iban": "CZ70 0300 0000 0001 5093 9558",
+          "swift": "CEKOCZPP",
+          "totalAmount": 62564.9,
+          "totalAmountInPayingCurrency": 62564.9,
+          "dphPercent": 21,
+          "dphPayingCurrency": 13313.14,
+          "dphCzk": 64565.53,
+          "dphBaseCzk": 52143.39,
+          "paymentCircumstances": null,
+          "paymentInstructions": null,
+          "dueDate": "2025-06-29",
+          "duzpDate": "2025-05-15"
+        }
+      }
+    }
   }
 ]

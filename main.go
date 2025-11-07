@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -36,7 +37,7 @@ type IntrastatData struct {
 
 type Item struct {
 	Name        string        `json:"name"`
-	Amount      int           `json:"amount"`
+	Amount      float64       `json:"amount"`
 	UnitPrice   float64       `json:"unitPrice"`
 	TotalPrice  float64       `json:"totalPrice"`
 	OrderNumber string        `json:"orderNumber"`
@@ -122,11 +123,18 @@ func pdfToTxtInvoice(filePath string) (string, error) {
 
 	request, err := http.NewRequest("POST", url, body)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
+	if err != nil {
+		return "", err
+	}
+
 	client := &http.Client{}
 	response, err := client.Do(request)
 
 	if err != nil {
 		return "", err
+	}
+	if response.StatusCode != 200 {
+		return "", errors.New("failed to convert PDF to text, status code: " + response.Status)
 	}
 	defer response.Body.Close()
 
@@ -216,9 +224,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", corsMiddleware(loggedRouter)))
 }
 func postUploadForm(w http.ResponseWriter, r *http.Request) {
-	// Parse the multipart form
-
-	r.ParseMultipartForm(32 << 20) // limit your max input length!
 	var buf bytes.Buffer
 	// in your case file would be fileupload
 	file, header, err := r.FormFile("file")
@@ -230,7 +235,10 @@ func postUploadForm(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("File name %s\n", name[0])
 	// Copy the file data to my buffer
 	io.Copy(&buf, file)
-	os.Create("./files/" + header.Filename)
+	_, err = os.Create("./files/" + header.Filename)
+	if err != nil {
+		log.Fatalf("Error creating file: %v", err)
+	}
 	pdfFile := os.WriteFile("./files/"+header.Filename, buf.Bytes(), 0644)
 	if pdfFile != nil {
 		log.Fatalf("Error saving uploaded PDF file: %v", pdfFile)
