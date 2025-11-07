@@ -1,0 +1,38 @@
+{
+  "invoice": {
+    "invoiceNum": "string",
+    "storage": [
+      {
+        "name": "string",
+        "amount": "number",
+        "unitPrice": "number",
+        "totalPrice": "number",
+        "orderNumber": "string",
+        "intrastatData": {
+          "tariffCode": "string",
+          "countryOfOrigin": "string"
+        }
+      }
+    ],
+    "pairData": {
+      "IC": "string",
+      "DIC": "string"
+    },
+    "accountingData": {
+      "supplierAccountNumber": "string",
+      "currency": "string",
+      "iban": "string",
+      "swift": "string",
+      "totalAmount": "number",
+      "totalAmountInPayingCurrency": "number",
+      "dphPercent": "number",
+      "dphPayingCurrency": "number",
+      "dphCzk": "number",
+      "dphBaseCzk": "number",
+      "paymentCircumstances": "string",
+      "paymentInstructions": "string",
+      "dueDate": "date",
+      "duzpDate": "date"
+    }
+  }
+}

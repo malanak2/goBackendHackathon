@@ -1,0 +1,106 @@
+[
+  {
+    "id": "1234567890_INV-2025-001",
+    "invoiceTypeJson": {
+      "invoice": {
+        "invoiceNum": "INV-2025-001",
+        "storage": [
+          {
+            "name": "Industrial Drill",
+            "amount": 3,
+            "unitPrice": 850,
+            "totalPrice": 2550,
+            "orderNumber": "ORD-3021",
+            "intrastatData": {
+              "tariffCode": "82073010",
+              "countryOfOrigin": "DE"
+            }
+          },
+          {
+            "name": "Safety Goggles",
+            "amount": 10,
+            "unitPrice": 25.5,
+            "totalPrice": 255,
+            "orderNumber": "ORD-3021",
+            "intrastatData": {
+              "tariffCode": "90049010",
+              "countryOfOrigin": "CZ"
+            }
+          }
+        ],
+        "pairData": {
+          "IC": "1234567890",
+          "DIC": "CZ1234567890"
+        },
+        "accountingData": {
+          "supplierAccountNumber": "400225",
+          "currency": "EUR",
+          "iban": "CZ6508000000001234567899",
+          "swift": "GIBACZPX",
+          "totalAmount": 2805,
+          "totalAmountInPayingCurrency": 2805,
+          "dphPercent": 21,
+          "dphPayingCurrency": 589.05,
+          "dphCzk": 14450,
+          "dphBaseCzk": 68800,
+          "paymentCircumstances": null,
+          "paymentInstructions": null,
+          "dueDate": "",
+          "duzpDate": ""
+        }
+      }
+    }
+  },
+  {
+    "id": "9876543210_INV-2025-002",
+    "invoiceTypeJson": {
+      "invoice": {
+        "invoiceNum": "INV-2025-002",
+        "storage": [
+          {
+            "name": "Aluminum Sheets",
+            "amount": 50,
+            "unitPrice": 12.75,
+            "totalPrice": 637.5,
+            "orderNumber": "ORD-4042",
+            "intrastatData": {
+              "tariffCode": "76061290",
+              "countryOfOrigin": "PL"
+            }
+          },
+          {
+            "name": "Packaging Tape",
+            "amount": 30,
+            "unitPrice": 2.8,
+            "totalPrice": 84,
+            "orderNumber": "ORD-4042",
+            "intrastatData": {
+              "tariffCode": "39191015",
+              "countryOfOrigin": "SK"
+            }
+          }
+        ],
+        "pairData": {
+          "IC": "9876543210",
+          "DIC": "CZ9876543210"
+        },
+        "accountingData": {
+          "supplierAccountNumber": "509332",
+          "currency": "CZK",
+          "iban": "CZ4201000000009876543210",
+          "swift": "KOMBCZPP",
+          "totalAmount": 721.5,
+          "totalAmountInPayingCurrency": 721.5,
+          "dphPercent": 21,
+          "dphPayingCurrency": 151.52,
+          "dphCzk": 3600,
+          "dphBaseCzk": 17100,
+          "paymentCircumstances": null,
+          "paymentInstructions": null,
+          "dueDate": "",
+          "duzpDate": ""
+        }
+      }
+    }
+  }
+]

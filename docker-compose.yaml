@@ -2,6 +2,19 @@ version: '3'
 
 services:
   app:
-    image: hackathon
+    image: hackathonapifin
     ports:
       - 42096:8080
+    volumes:
+      - ./files:/usr/src/app/files
+    networks:
+      - hackathon-network
+  pdfToTxt:
+    image: pdf-to-text
+    networks:
+      - hackathon-network
+  txtToPDF:
+    image: text-to-json
+    networks:
+      - hackathon-network
+

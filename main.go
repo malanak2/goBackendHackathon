@@ -1,70 +1,202 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
+var TxtToJsonPort = 5000
+var PdfToTxtPort = 5001
 var (
-	key []byte
-	t   *jwt.Token
-	s   string
+	key      []byte
+	t        *jwt.Token
+	s        string
+	dataFile = "forms.json"
+	forms    []InvoiceType
+	mu       sync.Mutex
 )
 
-type FormType int
+type IntrastatData struct {
+	TariffCode      string `json:"tariffCode"`
+	CountryOfOrigin string `json:"countryOfOrigin"`
+}
 
-const (
-	Inbound FormType = iota
-	Outbound
-)
+type Item struct {
+	Name        string        `json:"name"`
+	Amount      int           `json:"amount"`
+	UnitPrice   float64       `json:"unitPrice"`
+	TotalPrice  float64       `json:"totalPrice"`
+	OrderNumber string        `json:"orderNumber"`
+	Intrastat   IntrastatData `json:"intrastatData"`
+}
 
-type FormShort struct {
-	ID      string    `json:"id"`
-	Company string    `json:"company"`
-	Type    FormType  `json:"type"`
-	Date    time.Time `json:"date"`
+type PairData struct {
+	Ico  string `json:"IC"`
+	Dico string `json:"DIC"`
+}
+
+type AccountingData struct {
+	SupplierAccountNumber     string  `json:"supplierAccountNumber"`
+	Currency                  string  `json:"currency"`
+	IBAN                      string  `json:"iban"`
+	Swift                     string  `json:"swift"`
+	TotalAmount               float64 `json:"totalAmount"`
+	TotalAmountPayingCurrency float64 `json:"totalAmountInPayingCurrency"`
+	DPHPercent                float64 `json:"dphPercent"`
+	DPHPayingCurrency         float64 `json:"dphPayingCurrency"`
+	DPHCzk                    float64 `json:"dphCzk"`
+	DPHBase                   float64 `json:"dphBaseCzk"`
+	PaymentCircumstances      *string `json:"paymentCircumstances"`
+	PaymentInstructions       *string `json:"paymentInstructions"`
+	DueDate                   string  `json:"dueDate"`
+	DUZPDate                  string  `json:"duzpDate"`
 }
 type FormDTO struct {
-	ShortData FormShort `json:"shortData"`
-	Data      string    `json:"youAreGayData"`
-	Price     float64   `json:"price"`
+	InvoiceNum string         `json:"invoiceNum"`
+	Storage    []Item         `json:"storage"`
+	PairDatas  PairData       `json:"pairData"`
+	Accounting AccountingData `json:"accountingData"`
 }
 
-var forms []FormDTO
+type InvoiceTypeJson struct {
+	Form FormDTO `json:"invoice"`
+}
+type InvoiceType struct {
+	ID      string          `json:"id"`
+	Invoice InvoiceTypeJson `json:"invoiceTypeJson"`
+}
+
+func txtToJsonInvoice(data string) (InvoiceType, error) {
+	requestURL := fmt.Sprintf("http://127.0.0.1:%d", TxtToJsonPort)
+	res, err := http.Post(requestURL, "application/text", bytes.NewBuffer([]byte(data)))
+	if err != nil {
+		return InvoiceType{}, err
+	}
+	defer res.Body.Close()
+
+	form := &InvoiceTypeJson{}
+	fmt.Print(res.Body)
+	body_text, err := io.ReadAll(res.Body)
+	if err != nil {
+		return InvoiceType{}, err
+	}
+	derr := json.Unmarshal(body_text, form)
+	if derr != nil {
+		return InvoiceType{}, derr
+	}
+	return InvoiceType{ID: form.Form.PairDatas.Ico + form.Form.InvoiceNum, Invoice: *form}, nil
+}
+func pdfToTxtInvoice(filePath string) (string, error) {
+	url := fmt.Sprintf("http://127.0.0.1:%d/extract_text", PdfToTxtPort)
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return "", err
+	}
+	_, err = io.Copy(part, file)
+
+	err = writer.Close()
+	if err != nil {
+		return "", err
+	}
+
+	request, err := http.NewRequest("POST", url, body)
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	client := &http.Client{}
+	response, err := client.Do(request)
+
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	body_text, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body_text), nil
+}
+func loadData() error {
+	file, err := os.Open(dataFile)
+	if os.IsNotExist(err) {
+		// No file yet, start with empty slice
+		forms = []InvoiceType{}
+		return nil
+	} else if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	if len(bytes) == 0 {
+		forms = []InvoiceType{}
+		return nil
+	}
+
+	err = json.Unmarshal(bytes, &forms)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Loaded %d forms from file.\n", len(forms))
+	return nil
+}
+
+// Save data to file (thread-safe)
+func saveData() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	bytes, err := json.MarshalIndent(forms, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(dataFile, bytes, 0644)
+}
+
+type ShortFormDto struct {
+	Id         string `json:"id"`
+	InvoiceNum string `json:"invoiceNum"`
+	Amount     string `json:"totalAmount"`
+}
+
+func addPerson(p InvoiceType) error {
+	mu.Lock()
+	forms = append(forms, p)
+	mu.Unlock()
+
+	fmt.Printf("Added: %+v\n", p)
+	return saveData()
+}
 
 func main() {
 	key = []byte("key")
-	forms = []FormDTO{
-		{
-			ShortData: FormShort{
-				ID:      "tohle bude ičo + formnumber",
-				Company: "SUS America, inc.",
-				Type:    Inbound,
-				Date:    time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC),
-			},
-			Data:  "Why are you gay",
-			Price: 169.42,
-		},
-		{
-			ShortData: FormShort{
-				ID:      "350+69",
-				Company: "Mateřská škola Čar a Kouzel v Pardubicích DELTA",
-				Type:    Outbound,
-				Date:    time.Date(1527, 2, 20, 0, 0, 0, 0, time.UTC),
-			},
-			Data:  "Skibidi Danda Švanda",
-			Price: 999999,
-		},
-	}
+	loadData()
 
 	router := mux.NewRouter()
 	corsMiddleware := handlers.CORS(
@@ -77,12 +209,46 @@ func main() {
 	router.Handle("/form/{id}", jwtMiddleware(http.HandlerFunc(getFormById))).Methods("GET")
 	router.Handle("/form/{id}/dto", jwtMiddleware(http.HandlerFunc(getFormDTOById))).Methods("GET")
 	router.Handle("/form/{id}/pdf", jwtMiddleware(http.HandlerFunc(getFormPDFById))).Methods("GET")
+	router.Handle("/form/upload", jwtMiddleware(http.HandlerFunc(postUploadForm))).Methods("POST")
 
 	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
 
 	log.Fatal(http.ListenAndServe(":8080", corsMiddleware(loggedRouter)))
 }
+func postUploadForm(w http.ResponseWriter, r *http.Request) {
+	// Parse the multipart form
 
+	r.ParseMultipartForm(32 << 20) // limit your max input length!
+	var buf bytes.Buffer
+	// in your case file would be fileupload
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	name := strings.Split(header.Filename, ".")
+	fmt.Printf("File name %s\n", name[0])
+	// Copy the file data to my buffer
+	io.Copy(&buf, file)
+	os.Create("./files/" + header.Filename)
+	pdfFile := os.WriteFile("./files/"+header.Filename, buf.Bytes(), 0644)
+	if pdfFile != nil {
+		log.Fatalf("Error saving uploaded PDF file: %v", pdfFile)
+	}
+	tttxt, err := pdfToTxtInvoice("files/" + header.Filename)
+	if err != nil {
+		log.Printf("Error converting PDF to text: %v", err)
+		return
+	}
+	fmt.Print(tttxt)
+	retval, err := txtToJsonInvoice(tttxt)
+	if err != nil {
+		log.Printf("Error converting text to JSON invoice: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	addPerson(retval)
+}
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -122,10 +288,11 @@ func getForms(w http.ResponseWriter, r *http.Request) {
 
 	resp := []string{}
 	for _, form := range forms {
-		resp = append(resp, form.ShortData.ID)
+		resp = append(resp, form.ID)
 	}
 	resp_j, _ := json.Marshal(resp)
 	fmt.Fprint(w, string(resp_j))
+
 }
 
 func getFormById(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +300,8 @@ func getFormById(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	for _, form := range forms {
-		if form.ShortData.ID == id {
-			resp_j, _ := json.Marshal(form.ShortData)
+		if form.ID == id {
+			resp_j, _ := json.Marshal(form)
 			fmt.Fprint(w, string(resp_j))
 			return
 		}
@@ -148,7 +315,7 @@ func getFormDTOById(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	for _, form := range forms {
-		if form.ShortData.ID == id {
+		if form.ID == id {
 			resp_j, _ := json.Marshal(form)
 			fmt.Fprint(w, string(resp_j))
 			return
@@ -159,6 +326,19 @@ func getFormDTOById(w http.ResponseWriter, r *http.Request) {
 }
 
 func getFormPDFById(w http.ResponseWriter, r *http.Request) {
+	for _, form := range forms {
+		filePath := "./files/" + form.ID + ".pdf"
+		formFile, err := os.Open(filePath)
+		if err != nil {
+			continue
+		}
+		defer formFile.Close()
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", "inline; filename=\"report.pdf\"") // use "attachment" to force download
+
+		http.ServeFile(w, r, filePath)
+		return
+	}
 	filePath := "./files/report.pdf"
 
 	w.Header().Set("Content-Type", "application/pdf")
