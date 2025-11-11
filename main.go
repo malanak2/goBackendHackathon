@@ -93,6 +93,8 @@ func txtToJsonInvoice(data string) (InvoiceType, error) {
 	if err != nil {
 		return InvoiceType{}, err
 	}
+	jsonPayload := string(body_text)
+	fmt.Printf("✅ Success: Received JSON Payload:\n%s\n", jsonPayload)
 	derr := json.Unmarshal(body_text, form)
 	if derr != nil {
 		return InvoiceType{}, derr
