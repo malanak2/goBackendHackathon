@@ -7,7 +7,7 @@ services:
       - 42096:8080
     volumes:
       - ./files:/usr/src/app/files
-      - ./configs:/ap10p
+      - ./configs/configMain.ini:/app/configMain.ini
     networks:
       - hackathon-network
   pdfToTxt:
