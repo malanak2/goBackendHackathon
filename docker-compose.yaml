@@ -6,7 +6,7 @@ services:
     ports:
       - 42096:8080
     volumes:
-      - ./files:/usr/src/app/files
+      - ./files:/app/files
       - ./configs/configMain.ini:/app/configMain.ini
     networks:
       - hackathon-network
