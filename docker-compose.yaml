@@ -7,14 +7,26 @@ services:
       - 42096:8080
     volumes:
       - ./files:/usr/src/app/files
+      - ./configs:/app
+    depends:
+      - pdfToTxt
+      - txtToPdf
     networks:
       - hackathon-network
   pdfToTxt:
     image: pdf-to-text
     networks:
       - hackathon-network
-  txtToPDF:
+    volumes:
+      - ./configs:/app/conf
+  txtToPdf:
     image: text-to-json
     networks:
       - hackathon-network
+    volumes:
+      - ./configs:/app/conf
+
+networks:
+  hackathon-network:
+    driver: bridge
 

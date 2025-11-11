@@ -17,10 +17,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"gopkg.in/ini.v1"
 )
 
-var TxtToJsonPort = 5000
-var PdfToTxtPort = 5001
 var (
 	key      []byte
 	t        *jwt.Token
@@ -28,6 +27,7 @@ var (
 	dataFile = "forms.json"
 	forms    []InvoiceType
 	mu       sync.Mutex
+	cfg      *ini.File
 )
 
 type IntrastatData struct {
@@ -81,7 +81,7 @@ type InvoiceType struct {
 }
 
 func txtToJsonInvoice(data string) (InvoiceType, error) {
-	requestURL := fmt.Sprintf("http://127.0.0.1:%d", TxtToJsonPort)
+	requestURL := fmt.Sprintf("http://%s:%s", cfg.Section("Microservices").Key("txtToJsonIp").String(), cfg.Section("Microservices").Key("txtToJsonPort").String())
 	res, err := http.Post(requestURL, "application/text", bytes.NewBuffer([]byte(data)))
 	if err != nil {
 		return InvoiceType{}, err
@@ -101,7 +101,7 @@ func txtToJsonInvoice(data string) (InvoiceType, error) {
 	return InvoiceType{ID: form.Form.PairDatas.Ico + form.Form.InvoiceNum, Invoice: *form}, nil
 }
 func pdfToTxtInvoice(filePath string) (string, error) {
-	url := fmt.Sprintf("http://127.0.0.1:%d/extract_text", PdfToTxtPort)
+	url := fmt.Sprintf("http://%s:%s", cfg.Section("Microservices").Key("pdfToTxtIp").String(), cfg.Section("Microservices").Key("pdfToTxtPort").String())
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
@@ -170,7 +170,7 @@ func loadData() error {
 		return err
 	}
 
-	fmt.Printf("Loaded %d forms from file.\n", len(forms))
+	log.Printf("Loaded %d forms from file.\n", len(forms))
 	return nil
 }
 
@@ -193,23 +193,53 @@ type ShortFormDto struct {
 	Amount     string `json:"totalAmount"`
 }
 
-func addPerson(p InvoiceType) error {
+func addForm(p InvoiceType) error {
 	mu.Lock()
 	forms = append(forms, p)
 	mu.Unlock()
 
-	fmt.Printf("Added: %+v\n", p)
+	log.Printf("Added: %+v\n", p)
 	return saveData()
 }
+func loadConfig() error {
+	con, err := ini.Load("configMain.ini")
+	if err != nil {
+		log.Printf("Generating default config file...")
+		con = ini.Empty()
+		con.NewSection("Microservices")
+		con.Section("Microservices").NewKey("pdfToTxtIp", "pdfToTxt")
 
+		con.Section("Microservices").NewKey("txtToJsonIp", "txtToJson")
+		con.Section("Microservices").NewKey("txtToJsonPort", "5000")
+		con.Section("Microservices").NewKey("pdfToTxtPort", "5001")
+		err = con.SaveTo("configMain.ini")
+		if err != nil {
+			return errors.New("Failed to create new config " + err.Error())
+		}
+	}
+	con, err = ini.Load("configMain.ini")
+	if err != nil {
+		return err
+	}
+	log.Printf("Config file loaded.")
+	cfg = con
+	return nil
+}
 func main() {
 	key = []byte("key")
-	loadData()
+	err := loadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+	err = loadData()
+	if err != nil {
+		log.Fatalf("Error loading data: %v", err)
+	}
 
 	router := mux.NewRouter()
 	corsMiddleware := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
-		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		handlers.AllowedMethods([]string{"GET", "POST"}), //, "PUT", "DELETE", "OPTIONS"}),
 		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
 	)
 	router.HandleFunc("/userToken", getUserToken).Methods("GET")
@@ -232,14 +262,14 @@ func postUploadForm(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	name := strings.Split(header.Filename, ".")
-	fmt.Printf("File name %s\n", name[0])
+	log.Printf("File name %s\n", name[0])
 	// Copy the file data to my buffer
 	io.Copy(&buf, file)
-	_, err = os.Create("./files/" + header.Filename)
+	_, err = os.Create("files/" + header.Filename)
 	if err != nil {
 		log.Fatalf("Error creating file: %v", err)
 	}
-	pdfFile := os.WriteFile("./files/"+header.Filename, buf.Bytes(), 0644)
+	pdfFile := os.WriteFile("files/"+header.Filename, buf.Bytes(), 0644)
 	if pdfFile != nil {
 		log.Fatalf("Error saving uploaded PDF file: %v", pdfFile)
 	}
@@ -255,7 +285,8 @@ func postUploadForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	addPerson(retval)
+	os.Rename("files/"+header.Filename, "files/"+retval.ID+".pdf")
+	addForm(retval)
 }
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -335,7 +366,7 @@ func getFormDTOById(w http.ResponseWriter, r *http.Request) {
 
 func getFormPDFById(w http.ResponseWriter, r *http.Request) {
 	for _, form := range forms {
-		filePath := "./files/" + form.ID + ".pdf"
+		filePath := "files/" + form.ID + ".pdf"
 		formFile, err := os.Open(filePath)
 		if err != nil {
 			continue
@@ -347,7 +378,7 @@ func getFormPDFById(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filePath)
 		return
 	}
-	filePath := "./files/report.pdf"
+	filePath := "files/report.pdf"
 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", "inline; filename=\"report.pdf\"") // use "attachment" to force download

@@ -1,0 +1,7 @@
+[submodule "deps/hackaton_text_to_json"]
+	path = deps/hackaton_text_to_json
+	url = https://github.com/malanak2/hackaton_text_to_json
+	branch = sync_to_ver
+[submodule "deps/hackaton_pdf_to_txt"]
+	path = deps/hackaton_pdf_to_txt
+	url = https://github.com/KaskaVojtech/TomasMalinskyAhh
