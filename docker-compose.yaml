@@ -11,13 +11,13 @@ services:
     networks:
       - hackathon-network
   pdfToTxt:
-    image: pdf-to-text
+    image: pdf_to_text
     networks:
       - hackathon-network
     volumes:
       - ./configs:/app/conf
   txtToPdf:
-    image: text-to-json
+    image: text_to_json
     networks:
       - hackathon-network
     volumes:
