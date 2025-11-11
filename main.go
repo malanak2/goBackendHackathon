@@ -89,7 +89,6 @@ func txtToJsonInvoice(data string) (InvoiceType, error) {
 	defer res.Body.Close()
 
 	form := &InvoiceTypeJson{}
-	fmt.Print(res.Body)
 	body_text, err := io.ReadAll(res.Body)
 	if err != nil {
 		return InvoiceType{}, err
