@@ -101,7 +101,7 @@ func txtToJsonInvoice(data string) (InvoiceType, error) {
 	return InvoiceType{ID: form.Form.PairDatas.Ico + form.Form.InvoiceNum, Invoice: *form}, nil
 }
 func pdfToTxtInvoice(filePath string) (string, error) {
-	url := fmt.Sprintf("http://%s:%s", cfg.Section("Microservices").Key("pdfToTxtIp").String(), cfg.Section("Microservices").Key("pdfToTxtPort").String())
+	url := fmt.Sprintf("http://%s:%s/extract_pdf", cfg.Section("Microservices").Key("pdfToTxtIp").String(), cfg.Section("Microservices").Key("pdfToTxtPort").String())
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
